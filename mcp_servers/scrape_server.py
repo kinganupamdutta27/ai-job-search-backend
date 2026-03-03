@@ -9,10 +9,15 @@ from urllib.parse import urlparse
 
 import httpx
 from bs4 import BeautifulSoup
+from dotenv import load_dotenv
+
+from services.exceptions import AppError
+from services.rate_limiter import rate_limiter
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
+load_dotenv()
 
 # ── Web Scraping Implementation ──────────────────────────────────────────────
 
@@ -45,16 +50,32 @@ async def _fetch_page(url: str) -> dict[str, Any]:
     """Fetch a web page and extract its text content and metadata."""
     import random
 
+    user_agent = random.choice(USER_AGENTS)
     headers = {
-        "User-Agent": random.choice(USER_AGENTS),
+        "User-Agent": user_agent,
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
     }
 
     async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-        response = await client.get(url, headers=headers)
-        response.raise_for_status()
-        html = response.text
+        # Rate Limiting
+        domain = urlparse(url).netloc
+        await rate_limiter.acquire(domain)
+        
+        try:
+            response = await client.get(
+                url, headers=headers, follow_redirects=True
+            )
+            
+            # Handle 429 safely
+            if response.status_code == 429:
+                await rate_limiter.handle_429(domain, response)
+                raise Exception(f"Rate limited by {domain}")
+                
+            response.raise_for_status()
+            html = response.text
+        finally:
+            rate_limiter.release()
 
     soup = BeautifulSoup(html, "html.parser")
 

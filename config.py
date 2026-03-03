@@ -1,6 +1,7 @@
 """Application configuration loaded from environment variables."""
 
 import os
+from functools import lru_cache
 from pathlib import Path
 from pydantic_settings import BaseSettings
 from pydantic import Field
@@ -56,6 +57,7 @@ class Settings(BaseSettings):
         Path(self.upload_dir).mkdir(parents=True, exist_ok=True)
 
 
+@lru_cache()
 def get_settings() -> Settings:
-    """Get cached settings instance."""
+    """Get cached settings singleton instance."""
     return Settings()

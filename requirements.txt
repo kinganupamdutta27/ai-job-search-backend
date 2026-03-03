@@ -5,12 +5,12 @@ python-multipart==0.0.20
 websockets==14.2
 
 # LangChain / LangGraph
-langchain==0.3.14
-langchain-openai==0.3.0
-langchain-tavily==0.1.0
-langgraph==0.2.60
-langsmith==0.2.10
-tavily-python==0.5.0
+langchain
+langchain-openai
+langchain-tavily
+langgraph
+langsmith
+tavily-python
 
 # OpenAI
 openai==1.59.3

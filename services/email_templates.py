@@ -85,6 +85,14 @@ ROLE_TEMPLATES: dict[str, dict[str, str]] = {
         "emphasis": "Generative AI, LLMs, LangChain, LangGraph, RAG systems, prompt engineering, and AI application development",
         "tone": "innovative and forward-thinking",
     },
+    "ai_engineer": {
+        "emphasis": "Machine learning, AI agents, deep learning frameworks, MLOps, and model fine-tuning",
+        "tone": "highly technical and innovative",
+    },
+    "ml_engineer": {
+        "emphasis": "Machine learning models, feature engineering, data pipelines, predictive analytics, and Python/R",
+        "tone": "analytical and pragmatic",
+    },
     "data_scientist": {
         "emphasis": "Machine learning, statistical analysis, data visualization, Python (pandas, scikit-learn, TensorFlow/PyTorch)",
         "tone": "analytical and data-driven",
@@ -93,6 +101,10 @@ ROLE_TEMPLATES: dict[str, dict[str, str]] = {
         "emphasis": "Full-stack development with React/Next.js, Node.js/Python backends, databases, REST APIs, and DevOps",
         "tone": "versatile and solution-oriented",
     },
+    "frontend_developer": {
+        "emphasis": "UI/UX implementation, React, Vue, Next.js, state management, responsive design, and web performance",
+        "tone": "creative and detail-oriented",
+    },
     "devops_engineer": {
         "emphasis": "CI/CD pipelines, Docker, Kubernetes, cloud platforms (AWS/GCP/Azure), infrastructure as code",
         "tone": "reliability-focused and systematic",
@@ -100,6 +112,14 @@ ROLE_TEMPLATES: dict[str, dict[str, str]] = {
     "backend_developer": {
         "emphasis": "Server-side architecture, microservices, APIs, databases (SQL/NoSQL), caching, and scalability",
         "tone": "architectural and performance-minded",
+    },
+    "qa_engineer": {
+        "emphasis": "Automated testing, test planning, continuous integration, end-to-end testing (Selenium/Playwright), and quality assurance",
+        "tone": "meticulous and quality-focused",
+    },
+    "product_manager": {
+        "emphasis": "Product strategy, agile methodologies, cross-functional leadership, user research, and roadmap planning",
+        "tone": "strategic and user-centric",
     },
     "default": {
         "emphasis": "relevant technical skills and professional experience",

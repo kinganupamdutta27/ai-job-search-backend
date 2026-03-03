@@ -1,0 +1,30 @@
+Anupam Dutta
+Software Engineer / API Developer
+Location: Bangalore, India
+Email: anupamdutta27121998.in@gmail.com
+Phone: +91-9876543210
+
+Summary:
+Results-driven Software Engineer with 5+ years of experience in designing, building, and deploying scalable web applications and RESTful APIs. Adept in Python, FastAPI, Django, and database optimization. Passionate about AI integrations, LLMs, and backend infrastructure.
+
+Skills:
+- Languages: Python, JavaScript, TypeScript, SQL
+- Frameworks: FastAPI, Django, Next.js, React
+- Tools & Tech: Docker, AWS, PostgreSQL, Redis, Git, OpenAI API, LangChain, LangGraph
+- Concepts: Microservices, System Design, AI Agents
+
+Experience:
+
+Senior Python Developer | TechConnect Solutions (Jan 2022 - Present)
+- Designed and implemented a scalable microservices architecture using FastAPI and Docker.
+- Integrated LLM functionality using LangChain and OpenAI to automate internal workflows, saving 20 hours per week for the operations team.
+- Optimized database queries in PostgreSQL, reducing average response time by 40%.
+
+Backend Developer | DataStream Inc (July 2019 - Dec 2021)
+- Developed RESTful APIs using Django REST Framework for a high-traffic e-commerce platform.
+- Managed background tasks with Celery and Redis.
+- Authored comprehensive unit and integration tests using pytest.
+
+Education:
+B.Tech in Computer Science
+Visvesvaraya Technological University (2015 - 2019)

@@ -5,16 +5,23 @@ from __future__ import annotations
 import logging
 import os
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+
+from middleware.request_id import RequestIDMiddleware
+from services.exceptions import AppError
 
 from config import get_settings
+from database import init_db, close_db
 from routes.cv_routes import router as cv_router
 from routes.workflow_routes import router as workflow_router
 from routes.email_routes import router as email_router
 from routes.settings_routes import router as settings_router
+from routes.contacts_routes import router as contacts_router
 
 # ── Logging Setup ────────────────────────────────────────────────────────────
 
@@ -37,6 +44,9 @@ async def lifespan(app: FastAPI):
     settings.setup_langsmith()
     settings.ensure_directories()
 
+    # Initialize async SQLite database
+    await init_db()
+
     logger.info("=" * 60)
     logger.info("🚀 AI Job Search Automation — Starting Up")
     logger.info(f"   OpenAI Model: {settings.openai_model}")
@@ -50,6 +60,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
+    await close_db()
     logger.info("👋 AI Job Search Automation — Shutting Down")
 
 
@@ -77,12 +88,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Middleware ────────────────────────────────────────────────────────────────
+
+app.add_middleware(RequestIDMiddleware)
+
+# ── Global Exception Handlers ────────────────────────────────────────────────
+
+
+@app.exception_handler(AppError)
+async def handle_app_error(request: Request, exc: AppError) -> JSONResponse:
+    """Return structured JSON for all application-level errors."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    logger.error(
+        f"AppError [{exc.code}] (req={request_id}): {exc.detail}"
+    )
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.code,
+            "detail": exc.detail,
+            "request_id": request_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+
+
 # ── Mount Routers ────────────────────────────────────────────────────────────
 
 app.include_router(cv_router)
 app.include_router(workflow_router)
 app.include_router(email_router)
 app.include_router(settings_router)
+app.include_router(contacts_router)
 
 
 # ── Health Check ─────────────────────────────────────────────────────────────

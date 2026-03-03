@@ -9,12 +9,11 @@ from __future__ import annotations
 import json
 import logging
 
-from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from config import get_settings
 from graph.state import GraphState
 from graph.models import CVProfile
+from services.llm_utils import clean_llm_json, create_llm
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,6 @@ async def analyze_cv(state: GraphState) -> dict:
     Writes: state["cv_profile"], state["current_step"]
     """
     logger.info("📄 Starting CV analysis...")
-    settings = get_settings()
 
     cv_text = state.get("cv_text", "")
     if not cv_text:
@@ -75,11 +73,7 @@ async def analyze_cv(state: GraphState) -> dict:
             "current_step": "failed",
         }
 
-    llm = ChatOpenAI(
-        model=settings.openai_model,
-        api_key=settings.openai_api_key,
-        temperature=0.1,
-    )
+    llm = create_llm(temperature=0.1)
 
     messages = [
         SystemMessage(content=CV_ANALYSIS_PROMPT),
@@ -88,15 +82,7 @@ async def analyze_cv(state: GraphState) -> dict:
 
     try:
         response = await llm.ainvoke(messages)
-        content = response.content.strip()
-
-        # Clean up JSON if wrapped in markdown code blocks
-        if content.startswith("```"):
-            content = content.split("\n", 1)[1]
-            if content.endswith("```"):
-                content = content[:-3]
-            content = content.strip()
-
+        content = clean_llm_json(response.content)
         profile_data = json.loads(content)
         profile = CVProfile(**profile_data)
 

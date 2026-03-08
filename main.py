@@ -22,6 +22,8 @@ from routes.workflow_routes import router as workflow_router
 from routes.email_routes import router as email_router
 from routes.settings_routes import router as settings_router
 from routes.contacts_routes import router as contacts_router
+from routes.contact_finder_routes import router as contact_finder_router
+from routes.linkedin_routes import router as linkedin_router
 
 # ── Logging Setup ────────────────────────────────────────────────────────────
 
@@ -120,6 +122,8 @@ app.include_router(workflow_router)
 app.include_router(email_router)
 app.include_router(settings_router)
 app.include_router(contacts_router)
+app.include_router(contact_finder_router)
+app.include_router(linkedin_router)
 
 
 # ── Health Check ─────────────────────────────────────────────────────────────

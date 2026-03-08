@@ -36,6 +36,13 @@ class VerificationStatus(str, Enum):
     INVALID = "invalid"
 
 
+class EmailConfidence(str, Enum):
+    HIGH = "high"        # Directly extracted from page HTML
+    MEDIUM = "medium"    # AI-inferred with matching company domain
+    LOW = "low"          # Pattern-generated (hr@, careers@)
+    UNKNOWN = "unknown"  # Source not specified
+
+
 class VerificationResult(BaseModel):
     """Result of the email verification pipeline."""
 
@@ -47,6 +54,10 @@ class VerificationResult(BaseModel):
         default=None, description="SMTP RCPT TO check result (None = skipped)"
     )
     overall_status: VerificationStatus = Field(default=VerificationStatus.INVALID)
+    confidence: EmailConfidence = Field(
+        default=EmailConfidence.UNKNOWN,
+        description="Confidence level based on how the email was discovered",
+    )
     detail: str = Field(default="", description="Human-readable verification summary")
 
 
@@ -181,20 +192,36 @@ async def check_smtp(email: str, timeout: int = 10) -> Optional[bool]:
 # ── Full Pipeline ────────────────────────────────────────────────────────────
 
 
+def infer_confidence(source: str) -> EmailConfidence:
+    """Map a contact source tag to a confidence level."""
+    _SOURCE_MAP = {
+        "extracted": EmailConfidence.HIGH,
+        "ai_inferred": EmailConfidence.MEDIUM,
+        "pattern": EmailConfidence.LOW,
+        "fallback": EmailConfidence.LOW,
+    }
+    return _SOURCE_MAP.get(source, EmailConfidence.UNKNOWN)
+
+
 async def verify_email(
     email: str,
     check_smtp_enabled: bool = False,
+    source: str = "",
 ) -> VerificationResult:
     """Run the full email verification pipeline.
 
     Args:
         email:               Email address to verify.
         check_smtp_enabled:  If True, also perform SMTP RCPT TO check.
+        source:              How the email was discovered (extracted/ai_inferred/pattern).
 
     Returns:
         VerificationResult with all stage results and overall status.
     """
-    result = VerificationResult(email=email)
+    result = VerificationResult(
+        email=email,
+        confidence=infer_confidence(source) if source else EmailConfidence.UNKNOWN,
+    )
 
     # Stage 1: Format
     result.format_valid = check_format(email)

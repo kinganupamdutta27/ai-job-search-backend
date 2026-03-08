@@ -122,3 +122,97 @@ class HRContactEntity(Base):
 
     def __repr__(self) -> str:
         return f"<HRContact email={self.email!r} company_id={self.company_id!r}>"
+
+
+# ── Contact Finder Runs ──────────────────────────────────────────────────────
+
+
+class ContactFinderRunEntity(Base):
+    """Tracks an independent contact discovery run."""
+
+    __tablename__ = "contact_finder_runs"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(32), default="running", index=True
+    )
+    results_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    contacts_found: Mapped[int] = mapped_column(Integer, default=0)
+    companies_found: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<ContactFinderRun id={self.id!r} status={self.status!r}>"
+
+
+# ── LinkedIn Tables ──────────────────────────────────────────────────────────
+
+
+class LinkedInCredentialEntity(Base):
+    """Encrypted LinkedIn login credentials."""
+
+    __tablename__ = "linkedin_credentials"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    encrypted_email: Mapped[str] = mapped_column(Text, nullable=False)
+    encrypted_password: Mapped[str] = mapped_column(Text, nullable=False)
+    encrypted_totp_secret: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_verified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LinkedInCredential id={self.id!r}>"
+
+
+class LinkedInPostEntity(Base):
+    """A LinkedIn post (draft, scheduled, or published)."""
+
+    __tablename__ = "linkedin_posts"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    topic: Mapped[str] = mapped_column(String(500), default="")
+    status: Mapped[str] = mapped_column(
+        String(32), default="draft", index=True
+    )
+    scheduled_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    published_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    celery_task_id: Mapped[str | None] = mapped_column(
+        String(255), nullable=True
+    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<LinkedInPost id={self.id!r} status={self.status!r}>"

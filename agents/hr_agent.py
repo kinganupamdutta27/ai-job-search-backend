@@ -22,7 +22,7 @@ from database import async_session_maker
 from graph.state import GraphState
 from graph.models import JobListing, HRContact
 from models.db_models import CompanyEntity, HRContactEntity
-from services.email_utils import extract_emails
+from services.email_utils import extract_emails, _is_placeholder_email, BLACKLIST_DOMAINS
 from services.email_verifier import verify_email, VerificationStatus
 from services.llm_utils import clean_llm_json, create_llm
 from services.retry import retry
@@ -38,22 +38,25 @@ USER_AGENT = (
 
 CONTACT_EXTRACTION_PROMPT = """You are an expert at extracting HR/recruiter contact information from job posting content.
 
-Analyze the following job posting page content and extract any HR, recruiter, or hiring manager contact information.
+STRICT RULES:
+- ONLY return email addresses that are EXPLICITLY VISIBLE in the page content below.
+- Do NOT invent, guess, or hallucinate email addresses.
+- Do NOT return placeholder/demo emails like user@example.com, name@domain.com, test@company.com.
+- Do NOT return emails belonging to job portals (naukri, indeed, linkedin, glassdoor, etc.).
+- If a real company domain is clearly identified in the content AND no explicit emails are found, you may suggest ONLY these pattern emails: hr@<domain>, careers@<domain>, recruitment@<domain>.
+- If the company domain is unclear or the URL is a job portal, return an empty array.
 
-Return a JSON array of contacts found. Each contact should have:
+Return a JSON array of contacts. Each contact:
 {{
   "name": "Contact name (or 'Hiring Manager' if unknown)",
-  "email": "contact@example.com",
+  "email": "actual-email@real-domain.com",
   "role": "HR Manager / Talent Acquisition / Recruiter",
-  "source": "extracted"
+  "source": "extracted" if found on page, "ai_inferred" if pattern-based
 }}
-
-If no direct contacts are found, try to infer likely HR email patterns based on the company domain.
-Common patterns: hr@domain.com, careers@domain.com, recruitment@domain.com, jobs@domain.com, talent@domain.com
 
 Company domain from URL: {domain}
 
-If you cannot find or infer any email, return an empty array [].
+If you cannot find any real email, return an empty array [].
 Return ONLY the JSON array, no extra text."""
 
 
@@ -115,6 +118,32 @@ def _domain_from_email(email: str) -> str:
     if "@" in email:
         return email.split("@")[1].lower()
     return ""
+
+
+_PATTERN_PREFIXES = {"hr", "careers", "recruitment", "jobs", "hiring", "talent"}
+
+
+def _validate_ai_email(email: str, page_text: str, company_domain: str) -> bool:
+    """Validate an AI-returned email is plausible, not hallucinated."""
+    lower = email.lower()
+    domain = lower.split("@")[1] if "@" in lower else ""
+
+    if domain in BLACKLIST_DOMAINS:
+        return False
+    if _is_placeholder_email(lower):
+        return False
+
+    local = lower.split("@")[0]
+    if local in _PATTERN_PREFIXES and company_domain and domain == company_domain:
+        return True
+
+    if lower in page_text.lower():
+        return True
+
+    if domain and company_domain and domain != company_domain:
+        return False
+
+    return False
 
 
 def _generate_pattern_emails(company_domain: str) -> list[HRContact]:
@@ -265,7 +294,13 @@ async def extract_contacts(state: GraphState) -> dict:
 
                 ai_contacts = json.loads(content)
                 for c in ai_contacts:
-                    contacts.append(HRContact(**c))
+                    candidate = HRContact(**c)
+                    if _validate_ai_email(candidate.email, page_text, domain):
+                        contacts.append(candidate)
+                    else:
+                        logger.info(
+                            f"  🚫 Discarded AI-hallucinated email: {candidate.email}"
+                        )
 
             except Exception as e:
                 logger.warning(f"  ⚠️ AI extraction failed: {e}")
@@ -278,7 +313,7 @@ async def extract_contacts(state: GraphState) -> dict:
         # Step 4: Verify emails before persisting
         verified_contacts: list[HRContact] = []
         for contact in contacts:
-            vr = await verify_email(contact.email)
+            vr = await verify_email(contact.email, source=contact.source)
             if vr.overall_status == VerificationStatus.INVALID:
                 logger.info(f"  🚫 Skipping invalid email: {contact.email} ({vr.detail})")
                 continue

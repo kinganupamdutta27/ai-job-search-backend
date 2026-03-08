@@ -36,6 +36,16 @@ class Settings(BaseSettings):
         default="", description="SMTP password (Gmail App Password for 2FA)"
     )
 
+    # --- Redis / Celery ---
+    redis_url: str = Field(
+        default="redis://localhost:6379/0", description="Redis connection URL for Celery broker"
+    )
+
+    # --- Encryption ---
+    encryption_key: str = Field(
+        default="", description="Fernet key for encrypting stored credentials"
+    )
+
     # --- Storage ---
     upload_dir: str = Field(default="./uploads", description="CV upload directory")
 

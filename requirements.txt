@@ -35,6 +35,19 @@ python-docx==1.1.2
 # MCP
 mcp==1.2.0
 
+# Celery + Redis (background tasks / scheduling)
+celery[redis]
+redis
+
+# Browser Automation (LinkedIn)
+playwright
+
+# Encryption (credential storage)
+cryptography
+
+# TOTP (2FA support)
+pyotp
+
 # Testing
 pytest==8.3.4
 pytest-asyncio==0.25.0

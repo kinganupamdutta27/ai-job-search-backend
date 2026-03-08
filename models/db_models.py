@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -216,3 +216,147 @@ class LinkedInPostEntity(Base):
 
     def __repr__(self) -> str:
         return f"<LinkedInPost id={self.id!r} status={self.status!r}>"
+
+
+# ── Job Auto-Apply Tables ─────────────────────────────────────────────────
+
+
+class JobApplyProfileEntity(Base):
+    """Stores resume data + application preferences for auto-apply."""
+
+    __tablename__ = "job_apply_profiles"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    cv_file_path: Mapped[str] = mapped_column(Text, nullable=False)
+    cv_profile_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    expected_salary: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    current_ctc: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    expected_ctc: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    notice_period: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    work_authorization: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    willing_to_relocate: Mapped[bool] = mapped_column(Boolean, default=False)
+    preferred_job_titles: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    preferred_locations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    years_of_experience: Mapped[float] = mapped_column(Float, default=0.0)
+    additional_info: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(),
+    )
+
+    sessions: Mapped[list["JobApplySessionEntity"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<JobApplyProfile id={self.id!r}>"
+
+
+class JobApplySessionEntity(Base):
+    """Tracks one auto-apply run (searching + applying to jobs)."""
+
+    __tablename__ = "job_apply_sessions"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    profile_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("job_apply_profiles.id"), index=True, nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(32), default="searching", index=True
+    )
+    search_criteria_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    max_applications: Mapped[int] = mapped_column(Integer, default=10)
+    applied_count: Mapped[int] = mapped_column(Integer, default=0)
+    skipped_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(),
+    )
+
+    profile: Mapped["JobApplyProfileEntity"] = relationship(back_populates="sessions")
+    applications: Mapped[list["JobApplicationEntity"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<JobApplySession id={self.id!r} status={self.status!r}>"
+
+
+class JobApplicationEntity(Base):
+    """Tracks an individual job application attempt."""
+
+    __tablename__ = "job_applications"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    session_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("job_apply_sessions.id"), index=True, nullable=False
+    )
+    job_title: Mapped[str] = mapped_column(String(300), default="")
+    company: Mapped[str] = mapped_column(String(300), default="")
+    job_url: Mapped[str] = mapped_column(Text, default="")
+    job_location: Mapped[str] = mapped_column(String(200), default="")
+    apply_type: Mapped[str] = mapped_column(String(30), default="unknown")
+    status: Mapped[str] = mapped_column(
+        String(32), default="pending", index=True
+    )
+    questions_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    applied_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+
+    session: Mapped["JobApplySessionEntity"] = relationship(back_populates="applications")
+
+    def __repr__(self) -> str:
+        return f"<JobApplication id={self.id!r} status={self.status!r}>"
+
+
+class SavedQAEntity(Base):
+    """Stores question-answer pairs learned from past applications.
+
+    When the system encounters a form field and fills it (deterministically
+    or via LLM), the Q&A pair is saved here.  On subsequent runs the stored
+    answer is used directly, eliminating LLM calls for repeat questions.
+    """
+
+    __tablename__ = "saved_qa"
+
+    id: Mapped[str] = mapped_column(
+        String(36), primary_key=True, default=_new_uuid
+    )
+    question: Mapped[str] = mapped_column(Text, nullable=False, index=True)
+    question_normalised: Mapped[str] = mapped_column(
+        Text, nullable=False, index=True,
+    )
+    answer: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    field_type: Mapped[str] = mapped_column(String(30), default="text")
+    source: Mapped[str] = mapped_column(
+        String(30), default="llm",
+    )
+    times_used: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow,
+        server_default=func.now(),
+    )
+
+    def __repr__(self) -> str:
+        return f"<SavedQA q={self.question_normalised!r} a={self.answer!r}>"

@@ -158,3 +158,69 @@ class WorkflowRun(BaseModel):
     created_at: str = Field(
         default_factory=lambda: datetime.now().isoformat()
     )
+
+
+# ── Job Auto-Apply Models ────────────────────────────────────────────────────
+
+
+class JobApplyPreferences(BaseModel):
+    """User preferences for auto-applying to jobs."""
+
+    expected_salary: str = Field(default="", description="Expected salary range")
+    current_ctc: str = Field(default="", description="Current CTC / salary")
+    expected_ctc: str = Field(default="", description="Expected CTC / salary")
+    notice_period: str = Field(default="Immediate", description="Notice period")
+    work_authorization: str = Field(default="", description="Work authorization status")
+    willing_to_relocate: bool = Field(default=False, description="Willing to relocate")
+    preferred_job_titles: list[str] = Field(default_factory=list, description="Desired job titles")
+    preferred_locations: list[str] = Field(default_factory=list, description="Preferred cities")
+    years_of_experience: float = Field(default=0, description="Total years of experience")
+    additional_info: dict = Field(
+        default_factory=dict,
+        description="Extra key-value pairs for custom application questions",
+    )
+
+
+class JobSearchCriteria(BaseModel):
+    """Search parameters for finding jobs on LinkedIn."""
+
+    keywords: str = Field(..., description="Job search keywords / title")
+    location: str = Field(default="", description="City or region")
+    experience_level: str = Field(default="", description="Entry, Associate, Mid-Senior, Director")
+    date_posted: str = Field(default="", description="Past 24h, Past Week, Past Month, Any")
+    easy_apply_only: bool = Field(default=True, description="Filter to Easy Apply jobs only")
+
+
+class JobApplyRequest(BaseModel):
+    """Request body for starting an auto-apply session."""
+
+    profile_id: str = Field(..., description="ID of the saved profile")
+    criteria: JobSearchCriteria
+    max_applications: int = Field(default=10, ge=1, le=50)
+
+
+class ApplicationResult(BaseModel):
+    """Result of a single job application attempt."""
+
+    id: str = Field(default="")
+    job_title: str = Field(default="")
+    company: str = Field(default="")
+    job_url: str = Field(default="")
+    job_location: str = Field(default="")
+    apply_type: str = Field(default="unknown")
+    status: str = Field(default="pending")
+    questions_answered: dict = Field(default_factory=dict)
+    error_message: str = Field(default="")
+
+
+class JobApplySessionStatus(BaseModel):
+    """Status response for a running or completed auto-apply session."""
+
+    session_id: str
+    status: str
+    max_applications: int = 0
+    applied_count: int = 0
+    skipped_count: int = 0
+    failed_count: int = 0
+    applications: list[ApplicationResult] = Field(default_factory=list)
+    created_at: str = ""

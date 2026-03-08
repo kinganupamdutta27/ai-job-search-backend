@@ -24,6 +24,7 @@ from routes.settings_routes import router as settings_router
 from routes.contacts_routes import router as contacts_router
 from routes.contact_finder_routes import router as contact_finder_router
 from routes.linkedin_routes import router as linkedin_router
+from routes.job_apply_routes import router as job_apply_router
 
 # ── Logging Setup ────────────────────────────────────────────────────────────
 
@@ -124,6 +125,7 @@ app.include_router(settings_router)
 app.include_router(contacts_router)
 app.include_router(contact_finder_router)
 app.include_router(linkedin_router)
+app.include_router(job_apply_router)
 
 
 # ── Health Check ─────────────────────────────────────────────────────────────
